@@ -3,12 +3,20 @@ use serde::Serializer;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Status {
-    status: String,
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub enum StatusType {
+    #[serde(rename = "running")]
+    Running,
+    #[serde(rename = "stopped")]
+    Stopped,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Status {
+    pub status: StatusType,
+}
+
+#[derive(Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum HostOverrideType {
     #[serde(rename = "A (IPv4 address)")]
     A,
@@ -32,25 +40,25 @@ impl Serialize for HostOverrideType {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct HostOverrideRow {
-    uuid: String,
+    pub uuid: String,
     #[serde(deserialize_with = "deserialize_bool")]
-    enabled: bool,
-    hostname: String,
-    domain: String,
-    rr: HostOverrideType,
-    server: String,
-    description: String,
+    pub enabled: bool,
+    pub hostname: String,
+    pub domain: String,
+    pub rr: HostOverrideType,
+    pub server: String,
+    pub description: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct HostOverride {
-    rows: Vec<HostOverrideRow>,
+    pub rows: Vec<HostOverrideRow>,
     #[serde(rename = "rowCount")]
-    row_count: u64,
-    total: u64,
-    current: u64,
+    pub row_count: u64,
+    pub total: u64,
+    pub current: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -68,22 +76,22 @@ pub struct NewHostOverride {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct HostAliasRow {
-    uuid: String,
+    pub uuid: String,
     #[serde(deserialize_with = "deserialize_bool")]
-    enabled: bool,
-    host: String,
-    hostname: String,
-    domain: String,
-    description: String,
+    pub enabled: bool,
+    pub host: String,
+    pub hostname: String,
+    pub domain: String,
+    pub description: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct HostAlias {
-    rows: Vec<HostAliasRow>,
+    pub rows: Vec<HostAliasRow>,
     #[serde(rename = "rowCount")]
-    row_count: u64,
-    total: u64,
-    current: u64,
+    pub row_count: u64,
+    pub total: u64,
+    pub current: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
