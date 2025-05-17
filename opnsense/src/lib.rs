@@ -2,7 +2,7 @@ pub mod models;
 
 use std::collections::HashMap;
 
-use anyhow::{Context, Error, Result};
+use anyhow::{Context, Error, Result, anyhow};
 use base64::{Engine, engine::general_purpose};
 use reqwest;
 use reqwest::header;
@@ -13,6 +13,7 @@ pub struct Opnsense {
     client: reqwest::Client,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum ApiEndpoint {
     UnboundServiceStatus,
     UnboundSearchHostOverrides,
@@ -89,19 +90,28 @@ impl Opnsense {
     pub async fn unbound_add_host_override(
         self,
         new: &models::NewHostOverride,
-    ) -> Result<reqwest::Response, Error> {
-        const _ENDPOINT: &str = "/api/unbound/settings/addHostOverride/";
-        let endpoint = self.url(_ENDPOINT);
+    ) -> Result<models::Uuid, Error> {
+        let endpoint: &str = ApiEndpoint::UnboundAddHostOverride.into();
+        let url = self.url(endpoint);
         let payload: HashMap<&str, &models::NewHostOverride> =
             [("host", new)].into_iter().collect();
-        let resp = self.client.post(endpoint).json(&payload).send().await?;
-        Ok(resp)
+        let resp = self.client.post(url).json(&payload).send().await?;
+        let resp = resp.error_for_status()?;
+        let parsed = resp.json::<models::ApiResult>().await?;
+
+        if parsed.result == "failed" {
+            Err(anyhow!(format!("Operation failed: {:?}", parsed.validations)))?
+        }
+        match parsed.uuid {
+            Some(x) => Ok(x),
+            None => Err(anyhow!("This should never happen"))?,
+        }
     }
 
     pub async fn unbound_get_host_aliases(&self) -> Result<models::HostAlias, Error> {
-        const _ENDPOINT: &str = "/api/unbound/settings/searchHostAlias/";
-        let endpoint = self.url(_ENDPOINT);
-        let resp = self.client.get(endpoint).send().await?;
+        let endpoint: &str = ApiEndpoint::UnboundSearchHostAliases.into();
+        let url = self.url(endpoint);
+        let resp = self.client.get(url).send().await?;
         let parsed = resp.json::<models::HostAlias>().await?;
         Ok(parsed)
     }
@@ -109,18 +119,28 @@ impl Opnsense {
     pub async fn unbound_add_host_alias(
         self,
         new: &models::NewHostAlias,
-    ) -> Result<reqwest::Response, Error> {
-        const _ENDPOINT: &str = "/api/unbound/settings/addHostAlias/";
-        let endpoint = self.url(_ENDPOINT);
+    ) -> Result<models::Uuid, Error> {
+        let endpoint: &str = ApiEndpoint::UnboundAddHostAlias.into();
+        let url = self.url(endpoint);
         let payload: HashMap<&str, &models::NewHostAlias> = [("alias", new)].into_iter().collect();
-        let resp = self.client.post(endpoint).json(&payload).send().await?;
-        Ok(resp)
+        let resp = self.client.post(url).json(&payload).send().await?;
+        let resp = resp.error_for_status()?;
+        let parsed = resp.json::<models::ApiResult>().await?;
+
+        if parsed.result == "failed" {
+            Err(anyhow!(format!("Operation failed: {:?}", parsed.validations)))?
+        }
+        match parsed.uuid {
+            Some(x) => Ok(x),
+            None => Err(anyhow!("This should never happen"))?,
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mockito::Matcher;
     use pretty_assertions::assert_eq;
 
     const SECRET: &str = "SECRET";
@@ -324,9 +344,295 @@ mod tests {
             current: 1,
         };
 
+        assert_eq!(resp, expected);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_unbound_add_host_override() -> Result<(), Error> {
+        // Request a new server from the pool
+        let mut server = mockito::Server::new_async().await;
+        let host = server.host_with_port();
+        let host = format!("http://{}", host);
+
+        let expected = r#"
+            {
+                "host": {
+                    "enabled": "1",
+                    "hostname": "hostname",
+                    "domain": "domain",
+                    "rr": "A",
+                    "mxprio": "",
+                    "mx": "",
+                    "server": "server",
+                    "description": "description"
+                }
+            }
+        "#;
+
+        // // Create a mock
+        let mock = server
+            .mock::<&str>("POST", ApiEndpoint::UnboundAddHostOverride.into())
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_header("accept", "application/json")
+            .with_body(
+                r#"
+                {
+                    "result": "saved",
+                    "uuid": "some-uuid"
+                }
+                "#,
+            )
+            .match_header("content-type", "application/json")
+            .match_header("accept", "application/json")
+            .match_body(Matcher::JsonString(expected.to_string()))
+            .create();
+
+        let opnsense = Opnsense::new(&host, SECRET, KEY, true).unwrap();
+        let payload = models::NewHostOverride {
+            enabled: true,
+            hostname: "hostname".to_string(),
+            domain: "domain".to_string(),
+            rr: models::HostOverrideType::A,
+            mxprio: "".to_string(),
+            mx: "".to_string(),
+            server: "server".to_string(),
+            description: "description".to_string(),
+        };
+        opnsense.unbound_add_host_override(&payload).await?;
+
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_unbound_add_host_override_failed() -> Result<(), Error> {
+        // Request a new server from the pool
+        let mut server = mockito::Server::new_async().await;
+        let host = server.host_with_port();
+        let host = format!("http://{}", host);
+
+        let expected = r#"
+            {
+                "host": {
+                    "enabled": "1",
+                    "hostname": "hostname",
+                    "domain": "domain",
+                    "rr": "A",
+                    "mxprio": "",
+                    "mx": "",
+                    "server": "server",
+                    "description": "description"
+                }
+            }
+        "#;
+
+        // // Create a mock
+        let mock = server
+            .mock::<&str>("POST", ApiEndpoint::UnboundAddHostOverride.into())
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_header("accept", "application/json")
+            .with_body(
+                r#"
+                {
+                    "result": "failed",
+                    "validations": {
+                        "reason": "unknown"
+                    }
+                }
+                "#,
+            )
+            .match_header("content-type", "application/json")
+            .match_header("accept", "application/json")
+            .match_body(Matcher::JsonString(expected.to_string()))
+            .create();
+
+        let opnsense = Opnsense::new(&host, SECRET, KEY, true).unwrap();
+        let payload = models::NewHostOverride {
+            enabled: true,
+            hostname: "hostname".to_string(),
+            domain: "domain".to_string(),
+            rr: models::HostOverrideType::A,
+            mxprio: "".to_string(),
+            mx: "".to_string(),
+            server: "server".to_string(),
+            description: "description".to_string(),
+        };
+        let resp = opnsense.unbound_add_host_override(&payload).await;
+
+        mock.assert();
+        assert!(resp.is_err());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_unbound_get_host_aliases() -> Result<(), Error> {
+        // Request a new server from the pool
+        let mut server = mockito::Server::new_async().await;
+        let host = server.host_with_port();
+        let host = format!("http://{}", host);
+
+        // // Create a mock
+        let mock = server
+            .mock::<&str>("GET", ApiEndpoint::UnboundSearchHostAliases.into())
+            .with_status(202)
+            .with_header("content-type", "application/json")
+            .with_body(
+                r#"
+                {
+                    "rows": [
+                        {
+                            "uuid": "some-uuid",
+                            "enabled": "1",
+                            "host": "some-host",
+                            "hostname": "some-hostname",
+                            "domain": "some-domain",
+                            "description": "some-description"
+                        }
+                    ],
+                    "rowCount": 1,
+                    "total": 1,
+                    "current": 1
+                }
+                "#,
+            )
+            .create();
+
+        let opnsense = Opnsense::new(&host, SECRET, KEY, true).unwrap();
+        let resp = opnsense.unbound_get_host_aliases().await?;
+
+        let expected = models::HostAlias {
+            rows: vec![models::HostAliasRow {
+                uuid: "some-uuid".to_string(),
+                enabled: true,
+                host: "some-host".to_string(),
+                hostname: "some-hostname".to_string(),
+                domain: "some-domain".to_string(),
+                description: "some-description".to_string(),
+            }],
+            row_count: 1,
+            total: 1,
+            current: 1,
+        };
+
         // let status = opnsense.unbonud
         assert_eq!(resp, expected);
         mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_unbound_add_host_alias() -> Result<(), Error> {
+        // Request a new server from the pool
+        let mut server = mockito::Server::new_async().await;
+        let host = server.host_with_port();
+        let host = format!("http://{}", host);
+
+        let expected = r#"
+            {
+                "alias": {
+                    "description": "some-description",
+                    "domain": "some-domain",
+                    "enabled": "1",
+                    "hostname": "some-hostname",
+                    "host": "some-host-uuid"
+                }
+            }
+        "#;
+
+        // // Create a mock
+        let mock = server
+            .mock::<&str>("POST", ApiEndpoint::UnboundAddHostAlias.into())
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_header("accept", "application/json")
+            .with_body(
+                r#"
+                {
+                    "result": "saved",
+                    "uuid": "some-uuid"
+                }
+                "#,
+            )
+            .match_header("content-type", "application/json")
+            .match_header("accept", "application/json")
+            .match_body(Matcher::JsonString(expected.to_string()))
+            .create();
+
+        let opnsense = Opnsense::new(&host, SECRET, KEY, true).unwrap();
+        let payload = models::NewHostAlias {
+            description: "some-description".to_string(),
+            domain: "some-domain".to_string(),
+            enabled: true,
+            host: "some-host-uuid".to_string(),
+            hostname: "some-hostname".to_string(),
+        };
+        opnsense.unbound_add_host_alias(&payload).await?;
+
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_unbound_add_host_alias_invalid_host() -> Result<(), Error> {
+        // Request a new server from the pool
+        let mut server = mockito::Server::new_async().await;
+        let host = server.host_with_port();
+        let host = format!("http://{}", host);
+
+        let expected = r#"
+            {
+                "alias": {
+                    "description": "some-description",
+                    "domain": "some-domain",
+                    "enabled": "1",
+                    "hostname": "some-hostname",
+                    "host": "a-nonexistent-uuid"
+                }
+            }
+        "#;
+
+        // // Create a mock
+        let mock = server
+            .mock::<&str>("POST", ApiEndpoint::UnboundAddHostAlias.into())
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_header("accept", "application/json")
+            .with_body(
+                r#"
+                {
+                    "result": "failed",
+                    "validations": {
+                        "alias.host": "Option not in this list."
+                    }
+                }
+                "#,
+            )
+            .match_header("content-type", "application/json")
+            .match_header("accept", "application/json")
+            .match_body(Matcher::JsonString(expected.to_string()))
+            .create();
+
+        let opnsense = Opnsense::new(&host, SECRET, KEY, true).unwrap();
+        let payload = models::NewHostAlias {
+            description: "some-description".to_string(),
+            domain: "some-domain".to_string(),
+            enabled: true,
+            host: "a-nonexistent-uuid".to_string(),
+            hostname: "some-hostname".to_string(),
+        };
+        let resp = opnsense.unbound_add_host_alias(&payload).await;
+
+        mock.assert();
+        assert!(resp.is_err());
 
         Ok(())
     }

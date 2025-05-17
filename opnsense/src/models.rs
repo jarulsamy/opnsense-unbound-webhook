@@ -1,7 +1,8 @@
+use std::collections::HashMap;
+
 use serde::de;
 use serde::Serializer;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use serde::{Deserialize, Deserializer, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum StatusType {
@@ -43,7 +44,10 @@ impl Serialize for HostOverrideType {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct HostOverrideRow {
     pub uuid: String,
-    #[serde(deserialize_with = "deserialize_bool")]
+    #[serde(
+        serialize_with = "serialize_bool",
+        deserialize_with = "deserialize_bool"
+    )]
     pub enabled: bool,
     pub hostname: String,
     pub domain: String,
@@ -63,7 +67,10 @@ pub struct HostOverride {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct NewHostOverride {
-    #[serde(deserialize_with = "deserialize_bool")]
+    #[serde(
+        serialize_with = "serialize_bool",
+        deserialize_with = "deserialize_bool"
+    )]
     pub enabled: bool,
     pub hostname: String,
     pub domain: String,
@@ -74,10 +81,13 @@ pub struct NewHostOverride {
     pub description: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct HostAliasRow {
     pub uuid: String,
-    #[serde(deserialize_with = "deserialize_bool")]
+    #[serde(
+        serialize_with = "serialize_bool",
+        deserialize_with = "deserialize_bool"
+    )]
     pub enabled: bool,
     pub host: String,
     pub hostname: String,
@@ -85,7 +95,7 @@ pub struct HostAliasRow {
     pub description: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct HostAlias {
     pub rows: Vec<HostAliasRow>,
     #[serde(rename = "rowCount")]
@@ -98,10 +108,34 @@ pub struct HostAlias {
 pub struct NewHostAlias {
     pub description: String,
     pub domain: String,
-    #[serde(deserialize_with = "deserialize_bool")]
+    #[serde(
+        serialize_with = "serialize_bool",
+        deserialize_with = "deserialize_bool"
+    )]
     pub enabled: bool,
     pub hostname: String,
     pub host: String,
+}
+
+pub type Uuid = String;
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ApiResult {
+    pub result: String,
+    pub uuid: Option<Uuid>,
+    #[serde(skip_serializing)]
+    pub validations: Option<HashMap<String, String>>,
+}
+
+fn serialize_bool<S>(value: &bool, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let res = match *value {
+        true => "1",
+        false => "0",
+    };
+
+    serializer.serialize_str(res)
 }
 
 fn deserialize_bool<'de, D>(deserializer: D) -> Result<bool, D::Error>
@@ -116,3 +150,23 @@ where
         _ => Err(de::Error::unknown_variant(s, &["1", "0"])),
     }
 }
+
+// // A custom deserialization function, referred to by `deserialize_with`.
+// // (reference: https://github.com/serde-rs/serde/issues/1158)
+// fn all<'de, D>(deserializer: D) -> Result<(), D::Error>
+// where
+//     D: Deserializer<'de>,
+// {
+//     #[derive(Deserialize)]
+//     // This enum is, by default, "externally tagged";
+//     // but, since it consists only of a single unit variant,
+//     // it means that it can be deserialized only from
+//     // the corresponding constant string - and that's exactly what we need
+//     enum Helper {
+//         #[serde(rename = "all")]
+//         Variant,
+//     }
+//     // We're not interested in the deserialized value (we know what it is),
+//     // so we can simply map it to (), as required by signature
+//     Helper::deserialize(deserializer).map(|_| ())
+// }
