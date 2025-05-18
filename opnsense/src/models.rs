@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use serde::de;
 use serde::Serializer;
+use serde::de;
 use serde::{Deserialize, Deserializer, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

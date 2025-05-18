@@ -100,12 +100,13 @@ impl Opnsense {
         let parsed = resp.json::<models::ApiResult>().await?;
 
         if parsed.result == "failed" {
-            Err(anyhow!(format!("Operation failed: {:?}", parsed.validations)))?
+            Err(anyhow!(format!(
+                "Operation failed: {:?}",
+                parsed.validations
+            )))?
         }
-        match parsed.uuid {
-            Some(x) => Ok(x),
-            None => Err(anyhow!("This should never happen"))?,
-        }
+
+        parsed.uuid.ok_or(anyhow!("Failed to parse UUID"))
     }
 
     pub async fn unbound_get_host_aliases(&self) -> Result<models::HostAlias, Error> {
@@ -128,12 +129,13 @@ impl Opnsense {
         let parsed = resp.json::<models::ApiResult>().await?;
 
         if parsed.result == "failed" {
-            Err(anyhow!(format!("Operation failed: {:?}", parsed.validations)))?
+            Err(anyhow!(format!(
+                "Operation failed: {:?}",
+                parsed.validations
+            )))?
         }
-        match parsed.uuid {
-            Some(x) => Ok(x),
-            None => Err(anyhow!("This should never happen"))?,
-        }
+
+        parsed.uuid.ok_or(anyhow!("Failed to parse UUID"))
     }
 }
 
@@ -574,9 +576,11 @@ mod tests {
             host: "some-host-uuid".to_string(),
             hostname: "some-hostname".to_string(),
         };
-        opnsense.unbound_add_host_alias(&payload).await?;
+
+        let uuid = opnsense.unbound_add_host_alias(&payload).await?;
 
         mock.assert();
+        assert_eq!(uuid, "some-uuid");
 
         Ok(())
     }
