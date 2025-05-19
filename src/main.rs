@@ -1,38 +1,73 @@
 #[macro_use]
 extern crate rocket;
 
-use rocket::serde::json::Json;
+extern crate opnsense;
 
-mod models;
+use clap::Parser;
+use log::debug;
 
-#[get("/")]
-fn negotiate() -> Json<models::Filters> {
-    let f = models::Filters::new(".arulsamy.me");
-    Json(f)
-}
+mod web;
 
-#[get("/records")]
-fn records_get() -> &'static str {
-    todo!();
-}
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Domains supported by this instance.
+    #[arg(short, long = "domain")]
+    domains: Vec<String>,
 
-#[post("/records")]
-fn records_post() {
-    todo!();
-}
+    /// Increase log level for more debug info.
+    #[command(flatten)]
+    verbose: clap_verbosity_flag::Verbosity,
 
-#[post("/adjustendpoints")]
-fn adjust_endpoints() -> () {
-    todo!();
+    /// Secret to use to authenticate with OPNSense.
+    #[arg(long)]
+    opnsense_secret: Option<String>,
+
+    /// Key to use to authenticate with OPNSense.
+    #[arg(long)]
+    opnsense_key: Option<String>,
+
+    /// URL of OPNSense instance. Must include protocol (http(s)).
+    #[arg(long)]
+    opnsense_url: String,
+
+    /// Ignore HTTPS certificate errors.
+    #[arg(long, action)]
+    insecure: bool,
 }
 
 #[rocket::main]
 async fn main() -> Result<(), rocket::Error> {
+    let args = Args::parse();
+    env_logger::Builder::new()
+        .filter_level(args.verbose.log_level_filter())
+        .init();
+
+    for i in &args.domains {
+        debug!("Found included domain: {}", &i);
+    }
+
+    let opnsense = opnsense::Opnsense::new(
+        &args.opnsense_url,
+        args.opnsense_key,
+        args.opnsense_secret,
+        args.insecure,
+    )
+    .unwrap();
+
     let _rocket = rocket::build()
         .mount(
             "/",
-            routes![negotiate, records_get, records_post, adjust_endpoints],
+            routes![
+                web::healthz,
+                web::negotiate,
+                web::records_get,
+                web::records_post,
+                web::adjust_endpoints,
+            ],
         )
+        .manage(args.domains)
+        .manage(opnsense)
         .launch()
         .await?;
 

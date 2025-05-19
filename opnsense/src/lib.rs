@@ -37,10 +37,13 @@ impl From<ApiEndpoint> for &'static str {
 impl Opnsense {
     pub fn new(
         url: &str,
-        key: &str,
-        secret: &str,
+        key: Option<String>,
+        secret: Option<String>,
         danger_accept_invalid_certs: bool,
     ) -> Result<Self, Error> {
+        let key = key.unwrap_or_default();
+        let secret = secret.unwrap_or_default();
+
         // Assemble the header for basic auth
         let auth = format!("{}:{}", key, secret);
         let auth_encoded = format!("Basic {}", general_purpose::STANDARD.encode(auth));
