@@ -1,13 +1,9 @@
 mod models;
 
 use rocket::State;
-use rocket::http::ContentType;
 use rocket::serde::json::Json;
 
 const RECORD_DESCRIPTION_PREFIX: &'static str = "_ouw_";
-// let ExternalDNSWebhookJson = ContentType::new("application", "external.dns.webhook+json;version=1");
-static WEBHOOK_CONTENT_TYPE: HeaderValue =
-    HeaderValue::from_static("application/external.dns.webhook+json;version=1");
 
 #[get("/healthz")]
 pub fn healthz() -> &'static str {
