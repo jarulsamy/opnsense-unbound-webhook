@@ -1253,6 +1253,7 @@ dependencies = [
 name = "opnsense-unbound-webhook"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "clap",
  "clap-verbosity-flag",
  "env_logger",

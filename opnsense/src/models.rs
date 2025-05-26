@@ -151,22 +151,3 @@ where
     }
 }
 
-// // A custom deserialization function, referred to by `deserialize_with`.
-// // (reference: https://github.com/serde-rs/serde/issues/1158)
-// fn all<'de, D>(deserializer: D) -> Result<(), D::Error>
-// where
-//     D: Deserializer<'de>,
-// {
-//     #[derive(Deserialize)]
-//     // This enum is, by default, "externally tagged";
-//     // but, since it consists only of a single unit variant,
-//     // it means that it can be deserialized only from
-//     // the corresponding constant string - and that's exactly what we need
-//     enum Helper {
-//         #[serde(rename = "all")]
-//         Variant,
-//     }
-//     // We're not interested in the deserialized value (we know what it is),
-//     // so we can simply map it to (), as required by signature
-//     Helper::deserialize(deserializer).map(|_| ())
-// }
