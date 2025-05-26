@@ -172,7 +172,8 @@ mod tests {
             )
             .create();
 
-        let opnsense = Opnsense::new(&host, SECRET, KEY, true).unwrap();
+        let opnsense =
+            Opnsense::new(&host, Some(SECRET.to_string()), Some(KEY.to_string()), true).unwrap();
 
         let status = opnsense.unbound_get_status().await?;
         assert_eq!(status.status, models::StatusType::Running);
@@ -202,7 +203,8 @@ mod tests {
             )
             .create();
 
-        let opnsense = Opnsense::new(&host, SECRET, KEY, true).unwrap();
+        let opnsense =
+            Opnsense::new(&host, Some(SECRET.to_string()), Some(KEY.to_string()), true).unwrap();
 
         let status = opnsense.unbound_get_status().await?;
         assert_eq!(status.status, models::StatusType::Stopped);
@@ -232,7 +234,8 @@ mod tests {
             )
             .create();
 
-        let opnsense = Opnsense::new(&host, SECRET, KEY, true).unwrap();
+        let opnsense =
+            Opnsense::new(&host, Some(SECRET.to_string()), Some(KEY.to_string()), true).unwrap();
 
         let status = opnsense.unbound_get_status().await;
         assert!(status.is_err());
@@ -264,7 +267,8 @@ mod tests {
             )
             .create();
 
-        let opnsense = Opnsense::new(&host, SECRET, KEY, true).unwrap();
+        let opnsense =
+            Opnsense::new(&host, Some(SECRET.to_string()), Some(KEY.to_string()), true).unwrap();
 
         let status = opnsense.unbound_get_status().await?;
         assert_eq!(status.status, models::StatusType::Running);
@@ -320,7 +324,8 @@ mod tests {
             )
             .create();
 
-        let opnsense = Opnsense::new(&host, SECRET, KEY, true).unwrap();
+        let opnsense =
+            Opnsense::new(&host, Some(SECRET.to_string()), Some(KEY.to_string()), true).unwrap();
         let resp = opnsense.unbound_get_host_overrides().await?;
 
         let expected = models::HostOverride {
@@ -396,7 +401,8 @@ mod tests {
             .match_body(Matcher::JsonString(expected.to_string()))
             .create();
 
-        let opnsense = Opnsense::new(&host, SECRET, KEY, true).unwrap();
+        let opnsense =
+            Opnsense::new(&host, Some(SECRET.to_string()), Some(KEY.to_string()), true).unwrap();
         let payload = models::NewHostOverride {
             enabled: true,
             hostname: "hostname".to_string(),
@@ -457,7 +463,8 @@ mod tests {
             .match_body(Matcher::JsonString(expected.to_string()))
             .create();
 
-        let opnsense = Opnsense::new(&host, SECRET, KEY, true).unwrap();
+        let opnsense =
+            Opnsense::new(&host, Some(SECRET.to_string()), Some(KEY.to_string()), true).unwrap();
         let payload = models::NewHostOverride {
             enabled: true,
             hostname: "hostname".to_string(),
@@ -509,7 +516,8 @@ mod tests {
             )
             .create();
 
-        let opnsense = Opnsense::new(&host, SECRET, KEY, true).unwrap();
+        let opnsense =
+            Opnsense::new(&host, Some(SECRET.to_string()), Some(KEY.to_string()), true).unwrap();
         let resp = opnsense.unbound_get_host_aliases().await?;
 
         let expected = models::HostAlias {
@@ -571,7 +579,8 @@ mod tests {
             .match_body(Matcher::JsonString(expected.to_string()))
             .create();
 
-        let opnsense = Opnsense::new(&host, SECRET, KEY, true).unwrap();
+        let opnsense =
+            Opnsense::new(&host, Some(SECRET.to_string()), Some(KEY.to_string()), true).unwrap();
         let payload = models::NewHostAlias {
             description: "some-description".to_string(),
             domain: "some-domain".to_string(),
@@ -628,7 +637,8 @@ mod tests {
             .match_body(Matcher::JsonString(expected.to_string()))
             .create();
 
-        let opnsense = Opnsense::new(&host, SECRET, KEY, true).unwrap();
+        let opnsense =
+            Opnsense::new(&host, Some(SECRET.to_string()), Some(KEY.to_string()), true).unwrap();
         let payload = models::NewHostAlias {
             description: "some-description".to_string(),
             domain: "some-domain".to_string(),

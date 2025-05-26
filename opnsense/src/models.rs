@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::Serializer;
 use serde::de;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize,  Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum StatusType {
