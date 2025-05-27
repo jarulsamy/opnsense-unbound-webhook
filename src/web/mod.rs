@@ -1,9 +1,18 @@
 mod models;
 
 use rocket::State;
+use rocket::http::Status;
+use rocket::response::Responder;
 use rocket::serde::json::Json;
 
 const RECORD_DESCRIPTION_PREFIX: &'static str = "_ouw_";
+
+#[derive(Responder)]
+#[response(
+    status = 200,
+    content_type = "application/external.dns.webhook+json;version=1"
+)]
+pub struct WebhookJson<T>(pub Json<T>);
 
 #[get("/healthz")]
 pub fn healthz() -> &'static str {
@@ -11,13 +20,13 @@ pub fn healthz() -> &'static str {
 }
 
 #[get("/")]
-pub fn negotiate(domains: &State<Vec<String>>) -> Json<models::Filters> {
+pub fn negotiate(domains: &State<Vec<String>>) -> WebhookJson<models::Filters> {
     let f = models::Filters::new(&domains);
-    Json(f)
+    WebhookJson(Json(f))
 }
 
 #[get("/records")]
-pub async fn records_get(opnsense: &State<opnsense::Opnsense>) -> Json<Vec<models::Record>> {
+pub async fn records_get(opnsense: &State<opnsense::Opnsense>) -> WebhookJson<Vec<models::Record>> {
     //  Host Overrides <-> A records
     //  Host Aliases   <-> CName records
     let host_overrides = opnsense.unbound_get_host_overrides().await.unwrap();
@@ -40,16 +49,31 @@ pub async fn records_get(opnsense: &State<opnsense::Opnsense>) -> Json<Vec<model
         resp.push(record);
     }
 
-    Json(resp)
+    WebhookJson(Json(resp))
 }
 
 #[post("/records", format = "json", data = "<body>")]
 pub fn records_post(
     opnsense: &State<opnsense::Opnsense>,
     body: Json<models::UpdateRecords>,
-) -> Json<Vec<models::Record>> {
-    error!("{:?}", body);
-    todo!();
+) -> Status {
+    let records = body.into_inner();
+    for i in &records.create {
+        info!("Create: {:?}", i)
+    }
+
+    for i in &records.update_old {
+        info!("Update Old: {:?}", i)
+    }
+    for i in &records.update_new {
+        info!("Update New: {:?}", i)
+    }
+
+    for i in &records.delete {
+        info!("Delete {:?}", i)
+    }
+
+    Status::NoContent
     // Sample Request
     // curl -X POST http://localhost:8000/records \
     //   -H "Content-Type: application/json" \
@@ -73,8 +97,8 @@ pub fn records_post(
 }
 
 #[post("/adjustendpoints", format = "json", data = "<body>")]
-pub fn adjust_endpoints(body: Json<Vec<models::Record>>) -> Json<Vec<models::Record>> {
+pub fn adjust_endpoints(body: Json<Vec<models::Record>>) -> WebhookJson<Vec<models::Record>> {
     // Assume all transactions are valid.
     // TODO: Properly validate records.
-    body
+    WebhookJson(body)
 }

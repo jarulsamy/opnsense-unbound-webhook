@@ -22,49 +22,49 @@ pub enum RecordType {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct ProviderSpecific {
-    name: String,
-    value: String,
+pub struct ProviderSpecific {
+    pub name: String,
+    pub value: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Endpoint {
     #[serde(rename = "dnsName")]
-    dns_name: String,
-    targets: Vec<String>,
+    pub dns_name: String,
+    pub targets: Vec<String>,
     #[serde(rename = "recordType")]
-    record_type: RecordType,
+    pub record_type: RecordType,
     #[serde(rename = "recordTTL")]
-    record_ttl: i64,
-    labels: HashMap<String, String>,
+    pub record_ttl: i64,
+    pub labels: HashMap<String, String>,
     #[serde(rename = "providerSpecific")]
-    provider_specifc: Vec<ProviderSpecific>,
+    pub provider_specifc: Vec<ProviderSpecific>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Record {
     #[serde(rename = "dnsName")]
-    dns_name: String,
-    targets: Vec<String>,
+    pub dns_name: String,
+    pub targets: Vec<String>,
     #[serde(rename = "recordType")]
-    record_type: RecordType,
+    pub record_type: RecordType,
     #[serde(rename = "recordTTL")]
-    record_ttl: i64,
-    labels: Option<HashMap<String, String>>,
+    pub record_ttl: i64,
+    pub labels: Option<HashMap<String, String>>,
     #[serde(rename = "providerSpecific")]
-    provider_specific: Option<HashMap<String, String>>,
+    pub provider_specific: Option<HashMap<String, String>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UpdateRecords {
     #[serde(rename = "Create")]
-    create: Vec<Record>,
+    pub create: Vec<Record>,
     #[serde(rename = "UpdateOld")]
-    update_old: Vec<Record>,
+    pub update_old: Vec<Record>,
     #[serde(rename = "UpdateNew")]
-    update_new: Vec<Record>,
+    pub update_new: Vec<Record>,
     #[serde(rename = "Delete")]
-    delete: Vec<Record>,
+    pub delete: Vec<Record>,
 }
 
 impl From<&HostOverrideRow> for Record {
