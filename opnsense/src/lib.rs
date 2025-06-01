@@ -18,8 +18,10 @@ enum ApiEndpoint {
     UnboundServiceStatus,
     UnboundSearchHostOverrides,
     UnboundAddHostOverride,
+    UnboundDelHostOverride,
     UnboundSearchHostAliases,
     UnboundAddHostAlias,
+    UnboundDelHostAlias,
 }
 
 impl From<ApiEndpoint> for &'static str {
@@ -28,8 +30,10 @@ impl From<ApiEndpoint> for &'static str {
             ApiEndpoint::UnboundServiceStatus => "/api/unbound/service/status",
             ApiEndpoint::UnboundSearchHostOverrides => "/api/unbound/settings/searchHostOverride/",
             ApiEndpoint::UnboundAddHostOverride => "/api/unbound/settings/addHostOverride/",
+            ApiEndpoint::UnboundDelHostOverride => "/api/unbound/settings/delHostOverride/",
             ApiEndpoint::UnboundSearchHostAliases => "/api/unbound/settings/searchHostAlias/",
             ApiEndpoint::UnboundAddHostAlias => "/api/unbound/settings/addHostAlias/",
+            ApiEndpoint::UnboundDelHostAlias => "/api/unbound/settings/delHostAlias/",
         }
     }
 }
@@ -112,6 +116,21 @@ impl Opnsense {
         parsed.uuid.ok_or(anyhow!("Failed to parse UUID"))
     }
 
+    pub async fn unbound_del_host_override(self, uuid: String) -> Result<(), Error> {
+        let endpoint: &str = ApiEndpoint::UnboundDelHostOverride.into();
+        let url = self.url(endpoint) + &uuid;
+        let resp = self.client.post(&url).body("{}").send().await?;
+        let parsed = resp.json::<models::ApiResult>().await?;
+        if parsed.result != "deleted" {
+            Err(anyhow!(format!(
+                "Operation failed: {:?}",
+                parsed.validations
+            )))?
+        }
+
+        Ok(())
+    }
+
     pub async fn unbound_get_host_aliases(&self) -> Result<models::HostAlias, Error> {
         let endpoint: &str = ApiEndpoint::UnboundSearchHostAliases.into();
         let url = self.url(endpoint);
@@ -139,6 +158,21 @@ impl Opnsense {
         }
 
         parsed.uuid.ok_or(anyhow!("Failed to parse UUID"))
+    }
+
+    pub async fn unbound_del_host_alias(self, uuid: String) -> Result<(), Error> {
+        let endpoint: &str = ApiEndpoint::UnboundDelHostAlias.into();
+        let url = self.url(endpoint) + &uuid;
+        let resp = self.client.post(&url).body("{}").send().await?;
+        let parsed = resp.json::<models::ApiResult>().await?;
+        if parsed.result != "deleted" {
+            Err(anyhow!(format!(
+                "Operation failed: {:?}",
+                parsed.validations
+            )))?
+        }
+
+        Ok(())
     }
 }
 
@@ -484,6 +518,83 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_unbound_del_host_override() -> Result<(), Error> {
+        // Request a new server from the pool
+        let mut server = mockito::Server::new_async().await;
+        let host = server.host_with_port();
+        let host = format!("http://{}", host);
+        let uuid = "someuuid";
+
+        let expected = r#"{}"#;
+        let endpoint = <ApiEndpoint as Into<&str>>::into(ApiEndpoint::UnboundDelHostOverride)
+            .to_string()
+            + uuid;
+
+        let mock = server
+            .mock::<&str>("POST", &endpoint)
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_header("accept", "application/json")
+            .with_body(
+                r#"
+                {
+                    "result": "deleted"
+                }
+                "#,
+            )
+            .match_header("accept", "application/json")
+            .match_body(Matcher::JsonString(expected.to_string()))
+            .create();
+
+        let opnsense =
+            Opnsense::new(&host, Some(SECRET.to_string()), Some(KEY.to_string()), true).unwrap();
+        let resp = opnsense.unbound_del_host_override(uuid.to_string()).await?;
+
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_unbound_del_host_override_missing() -> Result<(), Error> {
+        // Request a new server from the pool
+        let mut server = mockito::Server::new_async().await;
+        let host = server.host_with_port();
+        let host = format!("http://{}", host);
+        let uuid = "someuuid";
+
+        let expected = r#"{}"#;
+        let endpoint = <ApiEndpoint as Into<&str>>::into(ApiEndpoint::UnboundDelHostOverride)
+            .to_string()
+            + uuid;
+
+        let mock = server
+            .mock::<&str>("POST", &endpoint)
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_header("accept", "application/json")
+            .with_body(
+                r#"
+                {
+                    "result": "not found"
+                }
+                "#,
+            )
+            .match_header("accept", "application/json")
+            .match_body(Matcher::JsonString(expected.to_string()))
+            .create();
+
+        let opnsense =
+            Opnsense::new(&host, Some(SECRET.to_string()), Some(KEY.to_string()), true).unwrap();
+        let resp = opnsense.unbound_del_host_override(uuid.to_string()).await;
+
+        mock.assert();
+        assert!(resp.is_err());
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn test_unbound_get_host_aliases() -> Result<(), Error> {
         // Request a new server from the pool
         let mut server = mockito::Server::new_async().await;
@@ -647,6 +758,81 @@ mod tests {
             hostname: "some-hostname".to_string(),
         };
         let resp = opnsense.unbound_add_host_alias(&payload).await;
+
+        mock.assert();
+        assert!(resp.is_err());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_unbound_del_host_alias() -> Result<(), Error> {
+        // Request a new server from the pool
+        let mut server = mockito::Server::new_async().await;
+        let host = server.host_with_port();
+        let host = format!("http://{}", host);
+        let uuid = "someuuid";
+
+        let expected = r#"{}"#;
+        let endpoint =
+            <ApiEndpoint as Into<&str>>::into(ApiEndpoint::UnboundDelHostAlias).to_string() + uuid;
+
+        let mock = server
+            .mock::<&str>("POST", &endpoint)
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_header("accept", "application/json")
+            .with_body(
+                r#"
+                {
+                    "result": "deleted"
+                }
+                "#,
+            )
+            .match_header("accept", "application/json")
+            .match_body(Matcher::JsonString(expected.to_string()))
+            .create();
+
+        let opnsense =
+            Opnsense::new(&host, Some(SECRET.to_string()), Some(KEY.to_string()), true).unwrap();
+        let resp = opnsense.unbound_del_host_alias(uuid.to_string()).await?;
+
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_unbound_del_host_alias_missing() -> Result<(), Error> {
+        // Request a new server from the pool
+        let mut server = mockito::Server::new_async().await;
+        let host = server.host_with_port();
+        let host = format!("http://{}", host);
+        let uuid = "someuuid";
+
+        let expected = r#"{}"#;
+        let endpoint =
+            <ApiEndpoint as Into<&str>>::into(ApiEndpoint::UnboundDelHostAlias).to_string() + uuid;
+
+        let mock = server
+            .mock::<&str>("POST", &endpoint)
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_header("accept", "application/json")
+            .with_body(
+                r#"
+                {
+                    "result": "not found"
+                }
+                "#,
+            )
+            .match_header("accept", "application/json")
+            .match_body(Matcher::JsonString(expected.to_string()))
+            .create();
+
+        let opnsense =
+            Opnsense::new(&host, Some(SECRET.to_string()), Some(KEY.to_string()), true).unwrap();
+        let resp = opnsense.unbound_del_host_alias(uuid.to_string()).await;
 
         mock.assert();
         assert!(resp.is_err());
