@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::Serializer;
 use serde::de;
-use serde::{Deserialize,  Serialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum StatusType {
@@ -150,4 +150,3 @@ where
         _ => Err(de::Error::unknown_variant(s, &["1", "0"])),
     }
 }
-

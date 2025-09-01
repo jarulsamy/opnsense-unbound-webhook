@@ -95,7 +95,7 @@ impl Opnsense {
     }
 
     pub async fn unbound_add_host_override(
-        self,
+        &self,
         new: &models::NewHostOverride,
     ) -> Result<models::Uuid, Error> {
         let endpoint: &str = ApiEndpoint::UnboundAddHostOverride.into();
@@ -116,7 +116,7 @@ impl Opnsense {
         parsed.uuid.ok_or(anyhow!("Failed to parse UUID"))
     }
 
-    pub async fn unbound_del_host_override(self, uuid: String) -> Result<(), Error> {
+    pub async fn unbound_del_host_override(&self, uuid: String) -> Result<(), Error> {
         let endpoint: &str = ApiEndpoint::UnboundDelHostOverride.into();
         let url = self.url(endpoint) + &uuid;
         let resp = self.client.post(&url).body("{}").send().await?;
@@ -140,7 +140,7 @@ impl Opnsense {
     }
 
     pub async fn unbound_add_host_alias(
-        self,
+        &self,
         new: &models::NewHostAlias,
     ) -> Result<models::Uuid, Error> {
         let endpoint: &str = ApiEndpoint::UnboundAddHostAlias.into();
@@ -160,7 +160,7 @@ impl Opnsense {
         parsed.uuid.ok_or(anyhow!("Failed to parse UUID"))
     }
 
-    pub async fn unbound_del_host_alias(self, uuid: String) -> Result<(), Error> {
+    pub async fn unbound_del_host_alias(&self, uuid: String) -> Result<(), Error> {
         let endpoint: &str = ApiEndpoint::UnboundDelHostAlias.into();
         let url = self.url(endpoint) + &uuid;
         let resp = self.client.post(&url).body("{}").send().await?;
