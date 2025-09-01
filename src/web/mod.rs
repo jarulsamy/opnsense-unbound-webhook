@@ -1,5 +1,8 @@
 mod models;
 
+use crate::web::models::RecordType;
+use opnsense::models::HostOverrideType;
+use opnsense::models::NewHostOverride;
 use rocket::State;
 use rocket::http::Status;
 use rocket::response::Responder;
@@ -52,23 +55,57 @@ pub async fn records_get(opnsense: &State<opnsense::Opnsense>) -> WebhookJson<Ve
     WebhookJson(Json(resp))
 }
 
+fn dns_name_to_hostname_and_domain(dns_name: &str) -> Option<(String, String)> {
+    match dns_name.split_once(".") {
+        Some((first, rest)) => Some((first.to_string(), rest.to_string())),
+        None => None,
+    }
+}
+
 #[post("/records", format = "json", data = "<body>")]
-pub fn records_post(
+pub async fn records_post(
     opnsense: &State<opnsense::Opnsense>,
     body: Json<models::UpdateRecords>,
 ) -> Status {
     let records = body.into_inner();
-    for i in &records.create {
-        info!("Create: {:?}", i)
-    }
+    // match validate_records(&records) {
+    //     Err(_) => return Status::InternalServerError,
+    //     Ok(_) => {}
+    // }
 
+    // let overrides = opnsense.unbound_get_host_overrides().await.unwrap();
+    // let aliases = opnsense.unbound_get_host_aliases().await.unwrap();
+
+    for i in &records.create {
+        match i.record_type {
+            RecordType::A => {
+                let (hostname, domain) = match dns_name_to_hostname_and_domain(&i.dns_name) {
+                    Some((hostname, domain)) => (hostname, domain),
+                    None => return Status::InternalServerError,
+                };
+                for server in &i.targets {
+                    let payload = NewHostOverride {
+                        enabled: true,
+                        hostname: hostname.clone(),
+                        domain: domain.clone(),
+                        rr: HostOverrideType::A,
+                        mxprio: "".to_string(),
+                        mx: "".to_string(),
+                        server: server.to_string(),
+                        description: "_ouw_".to_string(),
+                    };
+                    opnsense.unbound_add_host_override(&payload).await.unwrap();
+                }
+            }
+            RecordType::CNAME => {}
+        }
+    }
     for i in &records.update_old {
         info!("Update Old: {:?}", i)
     }
     for i in &records.update_new {
         info!("Update New: {:?}", i)
     }
-
     for i in &records.delete {
         info!("Delete {:?}", i)
     }

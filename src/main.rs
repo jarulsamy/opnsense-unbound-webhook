@@ -47,7 +47,7 @@ async fn main() -> Result<(), rocket::Error> {
 
     let in_k8s = env::var("KUBERNETES_SERVICE_HOST").is_ok();
     if in_k8s {
-        debug!("Determined we're in k8s!")
+        debug!("We're in k8s!")
     }
 
     for i in &args.domains {
