@@ -19,11 +19,11 @@ pub struct Status {
 
 #[derive(Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum HostOverrideType {
-    #[serde(rename = "A (IPv4 address)")]
+    // #[serde(rename = "A (IPv4 address)")]
     A,
-    #[serde(rename = "AAAA (IPv6 address)")]
+    // #[serde(rename = "AAAA (IPv6 address)")]
     AAAA,
-    #[serde(rename = "MX (Mail server)")]
+    // #[serde(rename = "MX (Mail server)")]
     MX,
 }
 
